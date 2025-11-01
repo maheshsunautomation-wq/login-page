@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      align-items: center;
+      justify-content: center;
+      background-color: #f4f4f4;
+    }
+
+    .login-box {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      width: 300px;
+      text-align: center;
+      transition: background-color 0.4s;
+    }
+
+    input {
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background-color: #007BFF;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .message {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box" id="loginBox">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Enter Username"><br>
+    <input type="password" id="password" placeholder="Enter Password"><br>
+    <button onclick="checkLogin()">Login</button>
+    <div class="message" id="message"></div>
+  </div>
+
+  <script>
+    function checkLogin() {
+      const user = document.getElementById("username").value;
+      const pass = document.getElementById("password").value;
+      const message = document.getElementById("message");
+      const loginBox = document.getElementById("loginBox");
+
+      // ✅ Change this to your desired username/password
+      const correctUser = "admin";
+      const correctPass = "1234";
+
+      if (user === correctUser && pass === correctPass) {
+        loginBox.style.backgroundColor = "#b6f7b0"; // green
+        message.textContent = "✅ Login Successful!";
+        message.style.color = "green";
+      } else {
+        loginBox.style.backgroundColor = "#f7b0b0"; // red
+        message.textContent = "❌ Incorrect Username or Password!";
+        message.style.color = "red";
+      }
+    }
+  </script>
+</body>
+</html>
