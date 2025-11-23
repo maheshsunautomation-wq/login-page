@@ -1,89 +1,301 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Login Page</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      height: 100vh;
-      align-items: center;
-      justify-content: center;
-      background-color: #f4f4f4;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌡️ Smart Sensor Data Visualization</title>
 
-    .login-box {
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      width: 300px;
-      text-align: center;
-      transition: background-color 0.4s;
-    }
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 
-    input {
-      width: 90%;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 14px;
-    }
+<style>
+  body {
+    background-color: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h2 { color: #fff; }
 
-    button {
-      width: 100%;
-      padding: 10px;
-      border: none;
-      border-radius: 8px;
-      background-color: #007BFF;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
+  .dashboard {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 30px;
+    width: 100%;
+    max-width: 1200px;
+    margin-top: 20px;
+  }
 
-    button:hover {
-      background-color: #0056b3;
-    }
+  canvas {
+    background-color: #111;
+    border-radius: 10px;
+    width: 800px;
+    max-width: 95%;
+  }
 
-    .message {
-      margin-top: 15px;
-      font-weight: bold;
-    }
-  </style>
+  .controls {
+    margin-top: 15px;
+  }
+
+  .sensor-option {
+    display: inline-flex;
+    align-items: center;
+    margin: 8px;
+    background: #111;
+    padding: 8px 15px;
+    border-radius: 10px;
+    border: 1px solid #444;
+  }
+
+  .sensor-option input[type="color"] {
+    margin-left: 8px;
+    border: none;
+    width: 35px;
+    height: 25px;
+    background: none;
+  }
+
+  .sensor-option label {
+    cursor: pointer;
+    font-weight: bold;
+    margin-left: 5px;
+  }
+
+  #statusPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    min-width: 250px;
+    background: #111;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #333;
+  }
+
+  .status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+  }
+
+  .status-item.normal {
+    background-color: #004d00;
+    color: #00ff00;
+    border: 2px solid #00ff00;
+  }
+
+  .status-item.emergency {
+    background-color: #4d0000;
+    color: #ff4444;
+    border: 2px solid #ff4444;
+  }
+</style>
 </head>
+
 <body>
-  <div class="login-box" id="loginBox">
-    <h2>Login</h2>
-    <input type="text" id="username" placeholder="Enter Username"><br>
-    <input type="password" id="password" placeholder="Enter Password"><br>
-    <button onclick="checkLogin()">Login</button>
-    <div class="message" id="message"></div>
-  </div>
 
-  <script>
-    function checkLogin() {
-      const user = document.getElementById("username").value;
-      const pass = document.getElementById("password").value;
-      const message = document.getElementById("message");
-      const loginBox = document.getElementById("loginBox");
+<h2>🌡️ Sensor Data Monitoring Dashboard</h2>
 
-      // ✅ Change this to your desired username/password
-      const correctUser = "admin";
-      const correctPass = "1234";
+<div class="controls" id="sensorControls"></div>
 
-      if (user === correctUser && pass === correctPass) {
-        loginBox.style.backgroundColor = "#b6f7b0"; // green
-        message.textContent = "✅ Login Successful!";
-        message.style.color = "green";
-      } else {
-        loginBox.style.backgroundColor = "#f7b0b0"; // red
-        message.textContent = "❌ Incorrect Username or Password!";
-        message.style.color = "red";
-      }
+<div class="dashboard">
+  <canvas id="sensorChart"></canvas>
+  <div id="statusPanel"></div>
+</div>
+
+<script>
+
+const apiURL = "https://script.google.com/macros/s/AKfycbxuaPGKCSyKQhO2TqthE7wEdKx2xGQLRqY4obpMOGNyhfg08S80FGzgILvvRN5qibGJ4g/exec";
+
+const sensors = ["GAS", "SMOKE", "SOUND", "LDR", "IR"];
+
+const colors = ["#ff4d4d", "#ffa64d", "#4dff4d", "#4da6ff", "#b84dff"];
+
+const thresholds = {
+  GAS: 700,
+  SMOKE: 4500,
+  SOUND: 3400,
+  LDR: 3500,
+  IR: 3500
+};
+
+function extractDate(dateStr) {
+  let part = dateStr.split(" ")[0];
+  let d = new Date(part);
+  if (isNaN(d)) {
+    let fixed = part.replace(/-/g, "/");
+    d = new Date(fixed);
+  }
+  return d;
+}
+
+let parsedData = [];
+let thresholdBox;
+
+fetch(apiURL)
+  .then(res => res.json())
+  .then(sheet => {
+
+    parsedData = sheet.map(r => ({
+      date: extractDate(r.DATE),
+      values: sensors.map(s => Number(r[s]))
+    }));
+
+    parsedData.sort((a, b) => a.date - b.date);
+
+    const labels = parsedData.map(d => {
+      const day = d.date.getDate().toString().padStart(2, "0");
+      const month = (d.date.getMonth()+1).toString().padStart(2, "0");
+      const year = d.date.getFullYear();
+      return `${day}-${month}-${year}`;
+    });
+
+    const datasets = sensors.map((sensor, i) => ({
+      label: sensor,
+      data: parsedData.map(d => d.values[i]),
+      backgroundColor: colors[i],
+      borderRadius: 5
+    }));
+
+    const ctx = document.getElementById("sensorChart").getContext("2d");
+
+    const chart = new Chart(ctx, {
+      type: "bar",
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        plugins: {
+          datalabels: { color: "#fff", anchor: "end", align: "top" },
+          legend: { labels: { color: "white" } },
+          title: { display: true, text: "Sensor Readings Over Time", color: "white" }
+        },
+        scales: {
+          x: { ticks: { color: "#fff" }, grid: { color: "#333" } },
+          y: { beginAtZero: true, ticks: { color: "#fff" }, grid: { color: "#333" } }
+        }
+      },
+      plugins: [ChartDataLabels]
+    });
+
+    const controlsDiv = document.getElementById("sensorControls");
+
+    sensors.forEach((sensor, index) => {
+      const div = document.createElement("div");
+      div.className = "sensor-option";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = true;
+      checkbox.addEventListener("change", () => {
+        chart.data.datasets[index].hidden = !checkbox.checked;
+        chart.update();
+      });
+
+      const label = document.createElement("label");
+      label.textContent = sensor;
+
+      const colorPicker = document.createElement("input");
+      colorPicker.type = "color";
+      colorPicker.value = colors[index];
+      colorPicker.addEventListener("input", () => {
+        chart.data.datasets[index].backgroundColor = colorPicker.value;
+        chart.update();
+      });
+
+      div.appendChild(checkbox);
+      div.appendChild(label);
+      div.appendChild(colorPicker);
+      controlsDiv.appendChild(div);
+    });
+
+    const statusPanel = document.getElementById("statusPanel");
+
+    function refreshStatus() {
+      statusPanel.innerHTML = "";
+
+      sensors.forEach((sensor, i) => {
+        const maxValue = Math.max(...parsedData.map(d => d.values[i]));
+        const div = document.createElement("div");
+        div.className = "status-item";
+
+        const label = document.createElement("span");
+        label.textContent = `${sensor}: `;
+
+        const state = document.createElement("span");
+
+        if (maxValue > thresholds[sensor]) {
+          div.classList.add("emergency");
+          state.textContent = "🚨 EMERGENCY";
+        } else {
+          div.classList.add("normal");
+          state.textContent = "✅ NORMAL";
+        }
+
+        div.appendChild(label);
+        div.appendChild(state);
+        statusPanel.appendChild(div);
+      });
+
+      statusPanel.appendChild(thresholdBox);
     }
-  </script>
+
+    // --- FIXED THRESHOLD BOX: Only numbers, no color ---
+    thresholdBox = document.createElement("div");
+    thresholdBox.style.marginTop = "15px";
+    thresholdBox.style.background = "#111";
+    thresholdBox.style.padding = "12px";
+    thresholdBox.style.border = "1px solid #333";
+    thresholdBox.style.borderRadius = "10px";
+    thresholdBox.innerHTML = "<h3 style='color:white; margin-bottom:10px;'>Edit Threshold Values</h3>";
+
+    Object.keys(thresholds).forEach(sensor => {
+      const row = document.createElement("div");
+      row.style.margin = "10px 0";
+      row.style.display = "flex";
+      row.style.justifyContent = "space-between";
+      row.style.alignItems = "center";
+      row.style.color = "white";
+      row.style.fontWeight = "bold";
+      row.style.fontSize = "16px";
+
+      const label = document.createElement("span");
+      label.textContent = sensor;
+
+      const input = document.createElement("input");
+      input.type = "number";
+      input.value = thresholds[sensor];
+      input.style.width = "100px";
+      input.style.background = "#222";
+      input.style.color = "white";
+      input.style.border = "1px solid #666";
+      input.style.borderRadius = "6px";
+      input.style.padding = "5px";
+      input.style.fontSize = "15px";
+
+      input.addEventListener("input", () => {
+        thresholds[sensor] = Number(input.value);
+        refreshStatus();
+      });
+
+      row.appendChild(label);
+      row.appendChild(input);
+      thresholdBox.appendChild(row);
+    });
+
+    refreshStatus();
+
+  });
+
+</script>
 </body>
 </html>
+
